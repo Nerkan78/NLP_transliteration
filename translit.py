@@ -30,7 +30,14 @@ class PositionalEncoding(nn.Module):
     def __init__(self, hidden_size, max_len=512):
         super(PositionalEncoding, self).__init__()
         pe = torch.zeros(max_len, hidden_size, requires_grad=False)
+        indices = torch.range(0, hidden_size-1)
         # TODO: implement your code here 
+        for pos in range(max_len):
+          for i in range(hidden_size):
+            if i % 2 == 0:
+              pe[pos, i] = torch.sin(torch.tensor(pos / 10000 ** (i /hidden_size)))
+            else:
+              pe[pos, i] = torch.cos(torch.tensor(pos / 10000 ** ((i-1) /hidden_size)))
         pe = pe.unsqueeze(0)
         # pe shape: (1, max_len, hidden_size)
         self.register_buffer('pe', pe)
