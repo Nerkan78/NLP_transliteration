@@ -458,7 +458,7 @@ def train(source_strings, target_strings):
     model = prepare_model(model_config)
     model.to(device)
 
-    train_config = {'batch_size': 200, 'n_epochs': 600, 'lr_scheduler': {
+    train_config = {'batch_size': 600, 'n_epochs': 1, 'lr_scheduler': {
         'type': 'warmup,decay_linear',
         'warmup_steps_part': 0.1,
         'lr_peak': 3e-4,
@@ -508,21 +508,33 @@ def classify(source_strings, learnable_params):
     return np.expand_dims(predictions, 1)
 
 if __name__=='__main__':
-    pass
-    # seed_val = 42
-    # random.seed(seed_val)
-    # np.random.seed(seed_val)
-    # torch.manual_seed(seed_val)
-    # torch.cuda.manual_seed_all(seed_val)
-    # data_dir_path = './data'
-    # parts = ['train', 'test']
-    # datasets = load_datasets(data_dir_path, parts)
-    # train_source_strings = datasets['train']['en']
-    # train_target_strings = datasets['train']['ru']
-    # learnable_params = train(train_source_strings, train_target_strings)
-    #
-    # test_source_strings = datasets['test']['en']
-    # test_target_strings = datasets['test']['ru']
-    # preds = classify(test_source_strings, learnable_params)
-    # mv = compute_metrics(np.squeeze(preds), test_target_strings, ['acc@1', 'mean_ld@1'])
-    # print(mv)
+    # pass
+    seed_val = 42
+    random.seed(seed_val)
+    np.random.seed(seed_val)
+    torch.manual_seed(seed_val)
+    torch.cuda.manual_seed_all(seed_val)
+    data_dir_path = './TRANSLIT'
+    parts = ['train_small', 'dev_small']
+    datasets = load_datasets(data_dir_path, parts)
+    train_source_strings = datasets['train_small']['en']
+    train_target_strings = datasets['train_small']['ru']
+    # print(f'-----TRAIN STRINGS-----')
+    # print(train_source_strings)
+    # print(train_target_strings)
+    learnable_params = train(train_source_strings, train_target_strings)
+    
+    test_source_strings = datasets['dev_small']['en']
+    test_target_strings = datasets['dev_small']['ru']
+    # print(f'-----TEST STRINGS-----')
+    # print(test_source_strings)
+    # print(test_target_strings)
+    
+    
+    preds = classify(test_source_strings, learnable_params)
+    
+    # print(f'-----PREDS-----')
+    
+    # print(preds)
+    mv = compute_metrics(np.squeeze(preds), test_target_strings, ['acc@1', 'mean_ld@1'])
+    print(mv)
