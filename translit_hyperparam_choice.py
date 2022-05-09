@@ -12,7 +12,8 @@ import copy
 import json
 from tqdm import tqdm
 import datetime, time
-
+import sys
+from torch.utils.tensorboard import SummaryWriter
 from translit_utils.data import TextEncoder, load_datasets, create_dataloader
 from translit_utils.metrics import compute_metrics
 
@@ -118,7 +119,7 @@ class MultiHeadAttention(nn.Module):
         seq_len = key.size(2)
         attn_weights = torch.matmul(query, key.transpose(2, 3)) / self.head_hidden_size ** 0.5
         if mask is not None:
-            attn_weights = attn_weights.masked_fill(mask == 0, 0)
+            attn_weights = attn_weights.masked_fill(mask == 0, -1e9)
         attn_weights = F.softmax(attn_weights, dim=3)
         if self.dropout is not None:
             attn_weights = self.dropout_layer(attn_weights)
@@ -361,9 +362,9 @@ def run_epoch(data_iter, model, lr_scheduler, optimizer, device, verbose=False):
             tokens = 0
 
     average_loss = total_loss / total_tokens
-    print('** End of epoch, accumulated average loss = %f **' % average_loss)
+    # print('** End of epoch, accumulated average loss = %f **' % average_loss)
     epoch_elapsed_time = format_time(time.time() - start)
-    print(f'** Elapsed time: {epoch_elapsed_time}**')
+    # print(f'** Elapsed time: {epoch_elapsed_time}**')
     return average_loss
 
 
@@ -422,7 +423,7 @@ def generate_predictions(dataloader, max_decoding_len, text_encoder, model, devi
 
 
 
-def train(source_strings, target_strings):
+def train(source_strings, target_strings, writer, **hyperparams):
     '''Common training cycle for final run (fixed hyperparameters,
     no evaluation during training)'''
     if torch.cuda.is_available():
@@ -446,10 +447,10 @@ def train(source_strings, target_strings):
         'hidden_size': 128,
         'ff_hidden_size': 256,
         'dropout': {
-            'embedding': 0.1,
-            'attention': 0.1,
-            'residual': 0.1,
-            'relu': 0.1
+            'embedding': hyperparams['Dropout-embedding'],
+            'attention': hyperparams['Dropout-attention'],
+            'residual': hyperparams['Dropout-residual'],
+            'relu': hyperparams['Dropout-relu']
         },
         'pad_idx': 0
     }
@@ -458,10 +459,10 @@ def train(source_strings, target_strings):
     model = prepare_model(model_config)
     model.to(device)
 
-    train_config = {'batch_size': 600, 'n_epochs': 1, 'lr_scheduler': {
+    train_config = {'batch_size': 200, 'n_epochs': 300, 'lr_scheduler': {
         'type': 'warmup,decay_linear',
         'warmup_steps_part': 0.1,
-        'lr_peak': 3e-4,
+        'lr_peak': hyperparams['lr_peak'],
     }}
 
     #Model training procedure
@@ -477,12 +478,14 @@ def train(source_strings, target_strings):
                                          shuffle_batches_each_epoch=True)
     # training cycle
     for epoch in range(1,train_config['n_epochs']+1):
-        print('\n' + '-'*40)
-        print(f'Epoch: {epoch}')
-        print(f'Run training...')
+        # print('\n' + '-'*40)
+        # print(f'Epoch: {epoch}')
+        # print(f'Run training...')
         model.train()
-        run_epoch(train_dataloader, model,
+        loss = run_epoch(train_dataloader, model,
                   lr_scheduler, optimizer, device=device, verbose=False)
+        
+        writer.add_scalar('Loss', loss, epoch)
     learnable_params = {
         'model': model,
         'text_encoder': text_encoder,
@@ -509,6 +512,12 @@ def classify(source_strings, learnable_params):
 
 if __name__=='__main__':
     # pass
+    p_e, p_a, p_res, p_rel = list(map(float, sys.argv[2:]))
+    writer = SummaryWriter(f"HyperParams/p_e={p_e}-p_a={p_a}-p_res={p_res}-p_rel={p_rel}-lr_peak={lr_peal}")
+    hyperparams = {'Dropout-embedding' : p_e, 'Dropout-attention' : p_a, 'Dropout-residual' : p_res, 'Dropout-relu' : p_rel, 'lr_peak' : lr_peak}
+    print(f"Train model with parameters {' '.join(list(map(lambda x : str(x[0]) + ':' + str(x[1]), hyperparams)))}")
+
+    
     seed_val = 42
     random.seed(seed_val)
     np.random.seed(seed_val)
@@ -522,7 +531,7 @@ if __name__=='__main__':
     # print(f'-----TRAIN STRINGS-----')
     # print(train_source_strings)
     # print(train_target_strings)
-    learnable_params = train(train_source_strings, train_target_strings)
+    learnable_params = train(train_source_strings, train_target_strings, writer, **hyperparams)
     
     test_source_strings = datasets['dev_small']['en']
     test_target_strings = datasets['dev_small']['ru']
@@ -538,3 +547,6 @@ if __name__=='__main__':
     # print(preds)
     mv = compute_metrics(np.squeeze(preds), test_target_strings, ['acc@1', 'mean_ld@1'])
     print(mv)
+    writer.add_scalar('acc@1', mv['acc@1'])
+    writer.add_scalar('mean_ld@1', mv['mean_ld@1'])
+    writer.close()
