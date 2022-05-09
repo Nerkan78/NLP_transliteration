@@ -513,7 +513,7 @@ def classify(source_strings, learnable_params):
 if __name__=='__main__':
     # pass
     p_e, p_a, p_res, p_rel, lr_peak = list(map(float, sys.argv[2:]))
-    writer = SummaryWriter(f"HyperParams/p_e={p_e}-p_a={p_a}-p_res={p_res}-p_rel={p_rel}-lr_peak={lr_peal}")
+    writer = SummaryWriter(f"HyperParams/p_e={p_e}-p_a={p_a}-p_res={p_res}-p_rel={p_rel}-lr_peak={lr_peak}")
     hyperparams = {'Dropout-embedding' : p_e, 'Dropout-attention' : p_a, 'Dropout-residual' : p_res, 'Dropout-relu' : p_rel, 'lr_peak' : lr_peak}
     print(f"Train model with parameters {' '.join(list(map(lambda x : str(x[0]) + ':' + str(x[1]), hyperparams)))}")
 
