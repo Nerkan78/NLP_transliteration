@@ -337,7 +337,7 @@ def run_epoch(data_iter, model, lr_scheduler, optimizer, device, verbose=False):
     total_loss = 0
     tokens = 0
     loss_fn = nn.CrossEntropyLoss(reduction='sum')
-    for i, batch in tqdm(enumerate(data_iter)):
+    for i, batch in (enumerate(data_iter)): #tqdm
         encoder_input = batch[0].to(device)
         decoder_input = batch[1].to(device)
         decoder_target = batch[2].to(device)
