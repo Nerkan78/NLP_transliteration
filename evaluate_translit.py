@@ -3,7 +3,7 @@ from time import time
 from pathlib import Path
 import numpy as np
 
-from translit_baseline import train, classify
+from translit import train, classify
 from score_translit import (
     load_dataset, save_preds, score_preds,
     SCORED_PARTS, TRANSLIT_PATH

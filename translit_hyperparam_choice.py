@@ -330,13 +330,13 @@ def format_time(elapsed):
     return str(datetime.timedelta(seconds=elapsed_rounded))
 
 
-def run_epoch(data_iter, model, lr_scheduler, optimizer, device, verbose=False):
+def run_epoch(data_iter, model, lr_scheduler, optimizer, device, alpha, verbose=False):
     start = time.time()
     local_start = start
     total_tokens = 0
     total_loss = 0
     tokens = 0
-    loss_fn = nn.CrossEntropyLoss(reduction='sum')
+    loss_fn = nn.CrossEntropyLoss(reduction='sum', label_smoothing=alpha)
     for i, batch in (enumerate(data_iter)): #tqdm
         encoder_input = batch[0].to(device)
         decoder_input = batch[1].to(device)
@@ -483,7 +483,7 @@ def train(source_strings, target_strings, writer, **hyperparams):
         # print(f'Run training...')
         model.train()
         loss = run_epoch(train_dataloader, model,
-                  lr_scheduler, optimizer, device=device, verbose=False)
+                  lr_scheduler, optimizer, device=device, alpha=hyperparams['alpha'], verbose=False)
         
         writer.add_scalar('Loss', loss, epoch)
     learnable_params = {
@@ -512,9 +512,9 @@ def classify(source_strings, learnable_params):
 
 if __name__=='__main__':
     # pass
-    p_e, p_a, p_res, p_rel, lr_peak = list(map(float, sys.argv[2:]))
-    writer = SummaryWriter(f"HyperParams/p_e={p_e}-p_a={p_a}-p_res={p_res}-p_rel={p_rel}-lr_peak={lr_peak}")
-    hyperparams = {'Dropout-embedding' : p_e, 'Dropout-attention' : p_a, 'Dropout-residual' : p_res, 'Dropout-relu' : p_rel, 'lr_peak' : lr_peak}
+    p_e, p_a, p_res, p_rel, lr_peak, alpha = list(map(float, sys.argv[2:]))
+    writer = SummaryWriter(f"HyperParams/p_e={p_e}-p_a={p_a}-p_res={p_res}-p_rel={p_rel}-lr_peak={lr_peak}-alpha={alpha}")
+    hyperparams = {'Dropout-embedding' : p_e, 'Dropout-attention' : p_a, 'Dropout-residual' : p_res, 'Dropout-relu' : p_rel, 'lr_peak' : lr_peak, 'alpha' : alpha}
     print(f"Train model with parameters {' '.join(list(map(lambda x : str(x[0]) + ':' + str(x[1]), hyperparams.items())))}")
 
     

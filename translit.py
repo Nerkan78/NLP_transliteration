@@ -118,7 +118,7 @@ class MultiHeadAttention(nn.Module):
         seq_len = key.size(2)
         attn_weights = torch.matmul(query, key.transpose(2, 3)) / self.head_hidden_size ** 0.5
         if mask is not None:
-            attn_weights = attn_weights.masked_fill(mask == 0, 0)
+            attn_weights = attn_weights.masked_fill(mask == 0, -1e9)
         attn_weights = F.softmax(attn_weights, dim=3)
         if self.dropout is not None:
             attn_weights = self.dropout_layer(attn_weights)
@@ -335,7 +335,7 @@ def run_epoch(data_iter, model, lr_scheduler, optimizer, device, verbose=False):
     total_tokens = 0
     total_loss = 0
     tokens = 0
-    loss_fn = nn.CrossEntropyLoss(reduction='sum')
+    loss_fn = nn.CrossEntropyLoss(reduction='sum', label_smoothing = 0.01)
     for i, batch in tqdm(enumerate(data_iter)):
         encoder_input = batch[0].to(device)
         decoder_input = batch[1].to(device)
@@ -448,7 +448,7 @@ def train(source_strings, target_strings):
         'dropout': {
             'embedding': 0.1,
             'attention': 0.1,
-            'residual': 0.1,
+            'residual': 0.15,
             'relu': 0.1
         },
         'pad_idx': 0
@@ -461,7 +461,7 @@ def train(source_strings, target_strings):
     train_config = {'batch_size': 200, 'n_epochs': 600, 'lr_scheduler': {
         'type': 'warmup,decay_linear',
         'warmup_steps_part': 0.1,
-        'lr_peak': 3e-4,
+        'lr_peak': 7e-4,
     }}
 
     #Model training procedure
@@ -520,7 +520,7 @@ if __name__=='__main__':
     # train_source_strings = datasets['train']['en']
     # train_target_strings = datasets['train']['ru']
     # learnable_params = train(train_source_strings, train_target_strings)
-    #
+    
     # test_source_strings = datasets['test']['en']
     # test_target_strings = datasets['test']['ru']
     # preds = classify(test_source_strings, learnable_params)
